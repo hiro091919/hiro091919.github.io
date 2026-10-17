@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Cygnets Record</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center">
+
+    <!-- モバイル風メイン容器 -->
+    <div class="w-full max-w-md bg-slate-800 border-x border-slate-700 min-h-screen flex flex-col shadow-2xl">
+        
+        <!-- ヘッダー（タイトルバー） - 指定色 #b94047 ベース -->
+        <header class="px-4 py-3 text-center border-b border-rose-900 shrink-0" style="background: linear-gradient(to right, #b94047, #962c33);">
+            <h1 class="text-base font-black tracking-wider text-white">
+                Team Cygnets Record
+            </h1>
+            <p class="text-[10px] text-rose-200">スイマーマイページ (記録・分析照会)</p>
+        </header>
+
+        <!-- 選手選択エリア -->
+        <div class="p-3 bg-slate-850 border-b border-slate-700 flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+                <label for="swimmerSelect" class="text-xs text-slate-300 font-bold">👤 選手（スイマー）選択:</label>
+                <span id="syncStatus" class="text-[10px] text-emerald-400 font-medium">🔄 自動同期済み</span>
+            </div>
+            <select id="swimmerSelect" onchange="onSwimmerChange()" class="w-full bg-slate-900 border border-slate-600 text-white text-sm rounded p-2 focus:outline-none focus:border-rose-500">
+                <option value="">選手を選択してください...</option>
+            </select>
+        </div>
+
+        <!-- 選手プロフィール表示カード -->
+        <div id="profileSection" class="p-3 bg-slate-800 border-b border-slate-700 flex items-center gap-3">
+            <div class="w-14 h-14 bg-slate-700 rounded-full flex items-center justify-center border-2 border-rose-500 text-xl shrink-0">
+                🏊‍♂️
+            </div>
+            <div class="flex-1 text-xs">
+                <div class="text-base font-bold text-rose-300" id="dispName">選手名未選択</div>
+            </div>
+        </div>
+
+        <!-- 絞り込みフィルターエリア (年度・種目) -->
+        <div class="p-2.5 bg-slate-900 border-b border-slate-700 grid grid-cols-2 gap-2 text-xs">
+            <div>
+                <label class="text-[11px] text-slate-400 block mb-1">📅 年度絞り込み:</label>
+                <select id="filterYear" onchange="renderRecordsList()" class="w-full bg-slate-800 text-white rounded p-1.5 border border-slate-600 text-xs">
+                    <option value="all">すべての年度</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-[11px] text-slate-400 block mb-1">🏊 種目絞り込み:</label>
+                <select id="filterEvent" onchange="renderRecordsList()" class="w-full bg-slate-800 text-white rounded p-1.5 border border-slate-600 text-xs">
+                    <option value="all">すべての種目</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 記録一覧セクションヘッダー -->
+        <div class="bg-slate-850 px-4 py-2 border-b border-slate-700 text-xs font-bold text-rose-400 flex justify-between items-center">
+            <span>📋 レース記録一覧 (新しい順)</span>
+            <span id="recordCount" class="text-[10px] text-slate-400">全0件</span>
+        </div>
+
+        <!-- レース記録リスト -->
+        <div id="recordsList" class="flex-1 overflow-y-auto p-2 space-y-2">
+            <div class="text-center text-xs text-slate-500 py-8">選手を選択すると記録が表示されます</div>
+        </div>
+
+        <!-- フッター -->
+        <footer class="p-3 bg-slate-900 border-t border-slate-800 text-center text-[10px] text-slate-500">
+            Team Cygnets Record v1.0
+        </footer>
+    </div>
+
+    <script>
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbyLgrbQQXAVqMU5-j7eTJgPnnexJL-HVNtAZwMjt58hMwk5OlHp-kKZfWbjOSjzqMk38A/exec";
+
+        let swimmersMaster = ["山田 太郎", "鈴木 一郎", "佐藤 花子", "高橋 健太", "塚口 弘之"];
+        let allRecords = [];
+
+        // 接続時自動同期
+        window.onload = async () => {
+            await syncAndLoadData();
+        };
+
+        async function syncAndLoadData() {
+            const statusElem = document.getElementById('syncStatus');
+            statusElem.innerText = '🔄 同期中...';
+            try {
+                const res = await fetch(GAS_URL + "?action=getMasters");
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.swimmers && data.swimmers.length > 0) {
+                        swimmersMaster = data.swimmers.map(s => typeof s === 'string' ? s : s.name);
+                    }
+                    if (data.records && data.records.length > 0) {
+                        allRecords = data.records;
+                    }
+                    statusElem.innerText = '✅ 最新同期完了';
+                } else {
+                    statusElem.innerText = '⚠️ オフライン';
+                }
+            } catch (e) {
+                console.error(e);
+                statusElem.innerText = '⚠️ 同期失敗(ローカル)';
+            }
+            initSwimmerDropdown();
+        }
+
+        function initSwimmerDropdown() {
+            const select = document.getElementById('swimmerSelect');
+            const currentVal = select.value;
+            select.innerHTML = '<option value="">選手を選択してください...</option>';
+            swimmersMaster.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s;
+                opt.text = s;
+                select.appendChild(opt);
+            });
+            if (currentVal) select.value = currentVal;
+        }
+
+        function onSwimmerChange() {
+            updateFilterOptions();
+            renderRecordsList();
+        }
+
+        function updateFilterOptions() {
+            const selectedName = document.getElementById('swimmerSelect').value;
+            const yearSelect = document.getElementById('filterYear');
+            const eventSelect = document.getElementById('filterEvent');
+
+            yearSelect.innerHTML = '<option value="all">すべての年度</option>';
+            eventSelect.innerHTML = '<option value="all">すべての種目</option>';
+
+            if (!selectedName) return;
+
+            const myRecords = allRecords.filter(r => r.swimmer && r.swimmer.includes(selectedName));
+            
+            const years = new Set();
+            const events = new Set();
+
+            myRecords.forEach(r => {
+                const dateStr = extractDateStr(r);
+                if (dateStr) {
+                    const year = dateStr.split('-')[0];
+                    years.add(year);
+                }
+                if (r.event) {
+                    events.add(r.event);
+                }
+            });
+
+            Array.from(years).sort().reverse().forEach(y => {
+                const opt = document.createElement('option');
+                opt.value = y;
+                opt.text = `${y}年度`;
+                yearSelect.appendChild(opt);
+            });
+
+            Array.from(events).sort().forEach(e => {
+                const opt = document.createElement('option');
+                opt.value = e;
+                opt.text = e;
+                eventSelect.appendChild(opt);
+            });
+        }
+
+        function renderRecordsList() {
+            const selectedName = document.getElementById('swimmerSelect').value;
+            const recordsContainer = document.getElementById('recordsList');
+            recordsContainer.innerHTML = '';
+
+            if (!selectedName) {
+                document.getElementById('dispName').innerText = '選手名未選択';
+                document.getElementById('recordCount').innerText = '全0件';
+                recordsContainer.innerHTML = '<div class="text-center text-xs text-slate-500 py-8">選手を選択すると記録が表示されます</div>';
+                return;
+            }
+
+            document.getElementById('dispName').innerText = selectedName;
+
+            let myRecords = allRecords.filter(r => r.swimmer && r.swimmer.includes(selectedName));
+
+            const selectedYear = document.getElementById('filterYear').value;
+            const selectedEvent = document.getElementById('filterEvent').value;
+
+            if (selectedYear !== 'all') {
+                myRecords = myRecords.filter(r => extractDateStr(r).startsWith(selectedYear));
+            }
+            if (selectedEvent !== 'all') {
+                myRecords = myRecords.filter(r => r.event === selectedEvent);
+            }
+
+            myRecords.sort((a, b) => new Date(extractDateStr(b)) - new Date(extractDateStr(a)));
+
+            document.getElementById('recordCount').innerText = `全${myRecords.length}件`;
+
+            if (myRecords.length === 0) {
+                recordsContainer.innerHTML = '<div class="text-center text-xs text-slate-500 py-8">該当するレース記録がありません</div>';
+                return;
+            }
+
+            const pbMap = {};
+            const allMyRecords = allRecords.filter(r => r.swimmer && r.swimmer.includes(selectedName));
+            allMyRecords.forEach(r => {
+                const key = `${r.event}_${r.course}`;
+                const finishTimeSec = extractFinishTimeSec(r.laps);
+                if (finishTimeSec > 0) {
+                    if (!pbMap[key] || finishTimeSec < pbMap[key].timeSec) {
+                        pbMap[key] = {
+                            timeSec: finishTimeSec,
+                            date: extractDateStr(r),
+                            competition: cleanCompName(r.competition)
+                        };
+                    }
+                }
+            });
+
+            myRecords.forEach((rec, idx) => {
+                const key = `${rec.event}_${rec.course}`;
+                const finishTimeSec = extractFinishTimeSec(rec.laps);
+                const finishTimeStr = formatSecondsToTime(finishTimeSec);
+                const pb = pbMap[key];
+
+                let pbDiffHtml = '<span class="text-slate-400 text-[11px]">PB計測対象</span>';
+                if (pb && finishTimeSec > 0) {
+                    const diffSec = finishTimeSec - pb.timeSec;
+                    if (Math.abs(diffSec) <= 0.005) {
+                        pbDiffHtml = `<span class="bg-amber-500 text-black text-[10px] px-1.5 py-0.5 rounded font-black">★ 自己ベスト (PB)</span>`;
+                    } else {
+                        pbDiffHtml = `<span class="text-rose-400 font-mono font-bold text-xs">+${diffSec.toFixed(2)}s</span> <span class="text-[10px] text-slate-400">(PB: ${formatSecondsToTime(pb.timeSec)} / ${pb.date})</span>`;
+                    }
+                }
+
+                const card = document.createElement('div');
+                card.className = "bg-slate-800 border border-slate-700 rounded-lg overflow-hidden shadow";
+                const dateStr = extractDateStr(rec);
+
+                card.innerHTML = `
+                    <div class="bg-slate-750 p-2.5 border-b border-slate-700 flex justify-between items-center cursor-pointer hover:bg-slate-700/50" onclick="toggleLapDetail(${idx})">
+                        <div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="bg-rose-950 border border-rose-800 text-rose-300 text-[10px] px-1.5 py-0.5 rounded font-bold">${rec.course}</span>
+                                <span class="font-bold text-sm text-white">${rec.event}</span>
+                            </div>
+                            <div class="text-[11px] text-slate-400 mt-0.5">${cleanCompName(rec.competition)}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs text-slate-400 font-mono">${dateStr}</div>
+                            <div class="text-base font-black text-rose-400 font-mono hover:underline">${finishTimeStr}</div>
+                        </div>
+                    </div>
+
+                    <div class="p-2 bg-slate-900/60 flex justify-between items-center text-xs border-b border-slate-800">
+                        <div class="flex items-center gap-1">
+                            ${pbDiffHtml}
+                        </div>
+                        <button onclick="toggleLapDetail(${idx})" class="text-[11px] text-rose-400 hover:underline flex items-center gap-0.5">
+                            ⏱️ ラップ詳細 <span id="arrow-${idx}">▼</span>
+                        </button>
+                    </div>
+
+                    <div id="lapDetail-${idx}" class="hidden bg-slate-900 p-2 text-xs border-t border-slate-800 space-y-1">
+                        <div class="font-bold text-rose-400 border-b border-slate-800 pb-1 text-[11px]">【ラップ・スプリットタイム】</div>
+                        ${buildLapRowsHtml(rec.laps)}
+                    </div>
+                `;
+                recordsContainer.appendChild(card);
+            });
+        }
+
+        function toggleLapDetail(idx) {
+            const detail = document.getElementById(`lapDetail-${idx}`);
+            const arrow = document.getElementById(`arrow-${idx}`);
+            if (detail) {
+                const isHidden = detail.classList.contains('hidden');
+                detail.classList.toggle('hidden', !isHidden);
+                if (arrow) arrow.innerText = isHidden ? '▲' : '▼';
+            }
+        }
+
+        function extractFinishTimeSec(laps) {
+            if (!laps) return 0;
+            let lapsObj = typeof laps === 'string' ? JSON.parse(laps) : laps;
+            const keys = Object.keys(lapsObj);
+            if (keys.length === 0) return 0;
+            const finishKey = keys.find(k => k.includes('Finish') || k.includes('50m') || k.includes('100m') || k.includes('200m')) || keys[keys.length - 1];
+            return parseTimeToSec(lapsObj[finishKey]);
+        }
+
+        function buildLapRowsHtml(laps) {
+            if (!laps) return '<div class="text-slate-500">ラップ記録なし</div>';
+            let lapsObj = typeof laps === 'string' ? JSON.parse(laps) : laps;
+            let html = '<table class="w-full text-left border-collapse text-[11px] mt-1">';
+            html += '<tr class="text-slate-400 border-b border-slate-800"><th class="py-1">地点</th><th class="py-1 text-right">タイム</th></tr>';
+
+            let prevSec = 0;
+            Object.keys(lapsObj).forEach((pt, i) => {
+                const timeSec = parseTimeToSec(lapsObj[pt]);
+                const diffSec = i === 0 ? timeSec : (timeSec - prevSec);
+                html += `
+                    <tr class="border-b border-slate-850">
+                        <td class="py-1 font-medium text-slate-300">${pt}</td>
+                        <td class="py-1 text-right font-mono text-rose-300 font-bold">${lapsObj[pt]} <span class="text-[10px] text-slate-500 font-normal">(+${diffSec.toFixed(2)}s)</span></td>
+                    </tr>
+                `;
+                prevSec = timeSec;
+            });
+            html += '</table>';
+            return html;
+        }
+
+        function parseTimeToSec(str) {
+            if (!str) return 0;
+            let s = String(str).trim();
+            if (s.includes(':')) {
+                let parts = s.split(':');
+                return parseInt(parts[0]) * 60 + parseFloat(parts[1]);
+            }
+            return parseFloat(s) || 0;
+        }
+
+        function formatSecondsToTime(sec) {
+            if (!sec || sec <= 0) return "-";
+            if (sec >= 60) {
+                let min = Math.floor(sec / 60);
+                let remainder = (sec % 60).toFixed(2);
+                return `${min}:${remainder.padStart(5, '0')}`;
+            }
+            return sec.toFixed(2) + "s";
+        }
+
+        function extractDateStr(rec) {
+            if (rec.competition) {
+                const match = rec.competition.match(/\((\d{4}-\d{2}-\d{2})\)/);
+                if (match) return match[1];
+            }
+            if (rec.timestamp) return rec.timestamp.split(' ')[0];
+            return "2026-10-01";
+        }
+
+        function cleanCompName(comp) {
+            if (!comp) return "大会名未設定";
+            return comp.replace(/\s*\(\d{4}-\d{2}-\d{2}\)/, '');
+        }
+    </script>
+</body>
+</html>
