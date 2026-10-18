@@ -86,18 +86,42 @@
 
         let swimmersMaster = ["山田 太郎", "鈴木 一郎", "佐藤 花子", "高橋 健太", "塚口 弘之"];
         let allRecords = [];
+        let competitionDatesMap = {}; // 大会名ごとの正しい開催日を保持するマップ
 
         window.onload = async () => {
             await syncAndLoadData();
         };
 
+        // マスタおよび記録データを最新に同期
         async function syncAndLoadData() {
             const statusElem = document.getElementById('syncStatus');
             statusElem.innerText = '🔄 同期中...';
             try {
-                const res = await fetch(GAS_URL + "?action=getMasters");
+                // キャッシュを防ぐタイムスタンプを付与
+                const res = await fetch(GAS_URL + "?action=getMasters&_t=" + new Date().getTime());
                 if (res.ok) {
                     const data = await res.json();
+                    
+                    // 大会マスタから正確な開催日マップを構築 (A列=name, B列=date)
+                    competitionDatesMap = {};
+                    if (data.competitions && data.competitions.length > 0) {
+                        data.competitions.forEach(c => {
+                            let compName = "";
+                            let compDate = "";
+                            if (Array.isArray(c)) {
+                                compName = c[0] || "";
+                                compDate = c[1] || "";
+                            } else if (typeof c === 'object' && c !== null) {
+                                compName = c.name || c.competition || c.title || "";
+                                compDate = c.date || c.開催日 || "";
+                            }
+                            if (compName && compDate) {
+                                // YYYY/MM/DD を YYYY-MM-DD に正規化して保持
+                                competitionDatesMap[compName.trim()] = String(compDate).trim().replace(/\//g, '-');
+                            }
+                        });
+                    }
+
                     if (data.swimmers && data.swimmers.length > 0) {
                         swimmersMaster = data.swimmers.map(s => typeof s === 'string' ? s : s.name);
                     }
@@ -113,6 +137,8 @@
                 statusElem.innerText = '⚠️ 同期失敗(キャッシュ)';
             }
             initSwimmerDropdown();
+            updateFilterOptions();
+            renderRecordsList();
         }
 
         function initSwimmerDropdown() {
@@ -138,6 +164,9 @@
             const yearSelect = document.getElementById('filterYear');
             const strokeSelect = document.getElementById('filterStroke');
 
+            const currentYearVal = yearSelect.value;
+            const currentStrokeVal = strokeSelect.value;
+
             yearSelect.innerHTML = '<option value="all">すべての年度</option>';
             strokeSelect.innerHTML = '<option value="all">すべての泳法</option>';
 
@@ -151,7 +180,10 @@
             myRecords.forEach(r => {
                 const dateStr = extractDateStr(r);
                 if (dateStr) {
-                    years.add(dateStr.split('-')[0]);
+                    const yearPart = dateStr.split(/[-/]/)[0];
+                    if (yearPart && yearPart.length === 4) {
+                        years.add(yearPart);
+                    }
                 }
                 if (r.event) {
                     const strokeName = r.event.split(' ')[0];
@@ -172,6 +204,9 @@
                 opt.text = s;
                 strokeSelect.appendChild(opt);
             });
+
+            if (currentYearVal) yearSelect.value = currentYearVal;
+            if (currentStrokeVal) strokeSelect.value = currentStrokeVal;
         }
 
         function renderRecordsList() {
@@ -231,7 +266,6 @@
                 const finishTimeStr = formatSecondsToTime(finishTimeSec);
                 const pb = pbMap[key];
 
-                // 水路ごとの配色切り替え（長水路＝青ベース / 短水路＝赤ベース）
                 const isLongCourse = rec.course && rec.course.includes("長水路");
                 const courseBadgeClass = isLongCourse 
                     ? "bg-blue-100 border border-blue-300 text-blue-700 text-[10px] px-1.5 py-0.5 rounded font-bold"
@@ -264,7 +298,6 @@
                         </div>
                         <div class="text-right">
                             <div class="text-xs text-slate-400 font-mono">${dateStr}</div>
-                            <!-- タイムのフォントを黒色に変更 -->
                             <div class="text-base font-black text-slate-900 font-mono hover:underline">${finishTimeStr}</div>
                         </div>
                     </div>
@@ -312,8 +345,6 @@
             let html = '<table class="w-full text-left border-collapse text-[11px] mt-1">';
             html += '<tr class="text-slate-400 border-b border-slate-100"><th class="py-1">地点</th><th class="py-1 text-right">タイム</th></tr>';
 
-            const timeColorClass = isLongCourse ? "text-blue-600" : "text-rose-600";
-
             let prevSec = 0;
             Object.keys(lapsObj).forEach((pt, i) => {
                 const timeSec = parseTimeToSec(lapsObj[pt]);
@@ -321,7 +352,6 @@
                 html += `
                     <tr class="border-b border-slate-50">
                         <td class="py-1 font-medium text-slate-700">${pt}</td>
-                        <!-- ラップタイムのフォントも黒色に変更 -->
                         <td class="py-1 text-right font-mono text-slate-900 font-bold">${lapsObj[pt]} <span class="text-[10px] text-slate-400 font-normal">(+${diffSec.toFixed(2)})</span></td>
                     </tr>
                 `;
@@ -351,18 +381,40 @@
             return sec.toFixed(2);
         }
 
+        // --- 修正: 大会マスタ（competitionDatesMap）の最新日付を最優先で適用する日付抽出関数 ---
         function extractDateStr(rec) {
+            if (!rec) return "2026-10-01";
+
+            // 1. レコードの大会名（cleaned）が最新のマスタ日付一覧に存在すれば、マスタ側の開催日を最優先で返す
             if (rec.competition) {
-                const match = rec.competition.match(/\((\d{4}-\d{2}-\d{2})\)/);
-                if (match) return match[1];
+                const cleanName = cleanCompName(rec.competition);
+                if (competitionDatesMap[cleanName]) {
+                    return competitionDatesMap[cleanName];
+                }
             }
-            if (rec.timestamp) return rec.timestamp.split(' ')[0];
+
+            // 2. レコード自体に独立した日付プロパティがあれば使用
+            if (rec.date) {
+                const m = String(rec.date).match(/\d{4}[-/]\d{2}[-/]\d{2}/);
+                if (m) return m[0].replace(/\//g, '-');
+            }
+
+            // 3. 従来どおり文字列内から抽出
+            if (rec.competition) {
+                const match = rec.competition.match(/(\d{4}[-/]\d{2}[-/]\d{2})/);
+                if (match) return match[1].replace(/\//g, '-');
+            }
+            if (rec.timestamp) {
+                const match = rec.timestamp.match(/(\d{4}[-/]\d{2}[-/]\d{2})/);
+                if (match) return match[1].replace(/\//g, '-');
+            }
+
             return "2026-10-01";
         }
 
         function cleanCompName(comp) {
             if (!comp) return "大会名未設定";
-            return comp.replace(/\s*\(\d{4}-\d{2}-\d{2}\)/, '');
+            return comp.replace(/\s*[\(\（]?\d{4}[-/]\d{2}[-/]\d{2}[\)\）]?/, '').trim();
         }
     </script>
 </body>
