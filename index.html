@@ -4,39 +4,42 @@
     <meta charset="UTF-8">
     <title>競泳レース分析アプリケーション</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    </style>
 </head>
-<body class="bg-slate-900 text-slate-100 h-screen flex flex-col overflow-hidden">
-    <!-- ヘッダー設定コントロール -->
-    <header class="bg-slate-800 border-b border-slate-700 px-4 py-2 flex flex-wrap items-center justify-between gap-2 shrink-0">
+<body class="bg-slate-100 text-slate-800 h-screen flex flex-col overflow-hidden">
+    <!-- ヘッダー設定コントロール (#b94047 ブランドカラーベース) -->
+    <header class="px-4 py-2 border-b border-rose-900 flex flex-wrap items-center justify-between gap-2 shrink-0 text-white shadow-md" style="background: linear-gradient(to right, #b94047, #962c33);">
         <div class="flex items-center space-x-2">
-            <h1 class="text-base font-bold text-cyan-400 flex items-center gap-1">🏊‍♂️ 競泳レース分析</h1>
+            <h1 class="text-base font-black tracking-wide flex items-center gap-1 text-white">🏊‍♂️ 競泳レース分析</h1>
             
-            <!-- 大会名プルダウン -->
-            <div class="flex items-center space-x-1 text-xs bg-slate-700 px-2 py-1 rounded">
-                <label class="text-slate-300">大会:</label>
-                <select id="compSelect" class="bg-slate-800 text-white rounded px-1 py-0.5 border border-slate-600 focus:outline-none"></select>
+            <!-- 大会名プルダウン (開催日つき表示) -->
+            <div class="flex items-center space-x-1 text-xs bg-rose-950/40 px-2 py-1 rounded border border-rose-400/30">
+                <label class="text-rose-100 font-medium">大会:</label>
+                <select id="compSelect" class="bg-white text-slate-800 rounded px-1.5 py-0.5 border border-slate-300 focus:outline-none text-xs font-semibold shadow-sm"></select>
             </div>
 
-            <!-- 短水路 / 長水路 -->
-            <div class="flex items-center space-x-1 text-xs bg-slate-700 px-2 py-1 rounded">
-                <label class="text-slate-300">水路:</label>
-                <select id="courseType" class="bg-slate-800 text-white rounded px-1 py-0.5 border border-slate-600 focus:outline-none" onchange="updateEventOptions()">
+            <!-- 水路 (手動選択) -->
+            <div class="flex items-center space-x-1 text-xs bg-rose-950/40 px-2 py-1 rounded border border-rose-400/30">
+                <label class="text-rose-100 font-medium">水路:</label>
+                <select id="courseType" class="bg-white text-slate-800 rounded px-1.5 py-0.5 border border-slate-300 focus:outline-none text-xs font-semibold shadow-sm" onchange="updateEventOptions()">
                     <option value="短水路">短水路</option>
                     <option value="長水路">長水路</option>
                 </select>
             </div>
 
             <!-- マスタ同期ボタン -->
-            <button onclick="syncMastersFromSheet()" class="bg-amber-600 hover:bg-amber-500 text-white px-2.5 py-1 rounded text-xs font-bold shadow transition flex items-center gap-1">
+            <button onclick="syncMastersFromSheet(true)" class="bg-amber-500 hover:bg-amber-400 text-slate-900 px-2.5 py-1 rounded text-xs font-bold shadow transition flex items-center gap-1 border border-amber-300">
                 🔄 マスタ同期
             </button>
         </div>
 
         <div class="flex items-center space-x-2">
             <!-- 種目 & 距離 -->
-            <div class="flex items-center space-x-1 text-xs bg-slate-700 px-2 py-1 rounded">
-                <label class="text-slate-300">種目:</label>
-                <select id="eventSelect" class="bg-slate-800 text-white rounded px-1 py-0.5 border border-slate-600 focus:outline-none" onchange="onEventChange()">
+            <div class="flex items-center space-x-1 text-xs bg-rose-950/40 px-2 py-1 rounded border border-rose-400/30">
+                <label class="text-rose-100 font-medium">種目:</label>
+                <select id="eventSelect" class="bg-white text-slate-800 rounded px-1.5 py-0.5 border border-slate-300 focus:outline-none text-xs font-semibold shadow-sm" onchange="onEventChange()">
                     <option value="自由形">自由形</option>
                     <option value="バタフライ">バタフライ</option>
                     <option value="背泳ぎ">背泳ぎ</option>
@@ -45,13 +48,13 @@
                     <option value="フリーリレー">フリーリレー</option>
                     <option value="メドレーリレー">メドレーリレー</option>
                 </select>
-                <select id="distanceSelect" class="bg-slate-800 text-white rounded px-1 py-0.5 border border-slate-600 focus:outline-none" onchange="buildLapTable()"></select>
+                <select id="distanceSelect" class="bg-white text-slate-800 rounded px-1.5 py-0.5 border border-slate-300 focus:outline-none text-xs font-semibold shadow-sm" onchange="buildLapTable()"></select>
             </div>
 
             <!-- リレー専用オプション -->
-            <div id="relayOptions" class="hidden flex items-center space-x-2 text-xs bg-cyan-950 border border-cyan-700 px-2 py-1 rounded">
-                <label class="text-cyan-300 font-semibold">区分:</label>
-                <select id="relayGender" class="bg-slate-800 text-white rounded px-1 py-0.5 border border-slate-600">
+            <div id="relayOptions" class="hidden flex items-center space-x-2 text-xs bg-rose-900 border border-rose-300/50 px-2 py-1 rounded">
+                <label class="text-rose-100 font-semibold">区分:</label>
+                <select id="relayGender" class="bg-white text-slate-800 rounded px-1.5 py-0.5 border border-slate-300 text-xs font-semibold">
                     <option value="男子">男子</option>
                     <option value="女子">女子</option>
                     <option value="混合">混合</option>
@@ -61,87 +64,91 @@
     </header>
 
     <!-- メインコンテンツ -->
-    <div class="flex-1 flex overflow-hidden p-2 gap-2">
+    <div class="flex-1 flex overflow-hidden p-2 gap-2 bg-slate-100">
         <!-- 左側：動画 & 再生バー -->
-        <div class="flex-1 flex flex-col bg-slate-800/80 rounded-lg p-2 border border-slate-700 relative">
-            <div class="flex justify-between items-center mb-1 text-xs">
+        <div class="flex-1 flex flex-col bg-white rounded-lg p-2.5 border border-slate-200 shadow-sm relative">
+            <div class="flex justify-between items-center mb-1.5 text-xs">
                 <div class="flex items-center space-x-2">
-                    <input type="file" id="videoUpload" accept="video/*" class="text-xs text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-cyan-700 file:text-white hover:file:bg-cyan-600">
+                    <input type="file" id="videoUpload" accept="video/*" class="text-xs text-slate-600 file:mr-2 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-rose-50 file:text-rose-700 hover:file:bg-rose-100 file:border file:border-rose-200 cursor-pointer">
                 </div>
-                <div class="text-slate-400">
-                    動画時間: <span id="videoTimeDisp" class="font-mono text-white">0.00s</span> | レース経過: <span id="raceTimeDisp" class="font-mono text-cyan-400 font-bold">0.00s</span>
+                <div class="text-slate-500 font-medium">
+                    動画時間: <span id="videoTimeDisp" class="font-mono text-slate-800 font-bold">0.00s</span> | レース経過: <span id="raceTimeDisp" class="font-mono text-rose-600 font-bold">0.00s</span>
                 </div>
             </div>
 
             <!-- 動画表示エリア -->
-            <div class="flex-1 relative bg-black rounded overflow-hidden flex items-center justify-center">
+            <div class="flex-1 relative bg-black rounded overflow-hidden flex items-center justify-center border border-slate-800">
                 <video id="mainVideo" class="max-h-full max-w-full object-contain" preload="metadata"></video>
             </div>
 
             <!-- 動画シークバー -->
-            <div class="mt-1 px-1">
-                <input type="range" id="videoSeekBar" value="0" min="0" max="100" step="0.01" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-400">
+            <div class="mt-1.5 px-1">
+                <input type="range" id="videoSeekBar" value="0" min="0" max="100" step="0.01" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-rose-600">
             </div>
 
             <!-- コントロールバー -->
-            <div class="mt-1 flex items-center justify-between text-xs bg-slate-900/90 p-1.5 rounded">
+            <div class="mt-1.5 flex items-center justify-between text-xs bg-slate-50 px-2 py-1.5 rounded border border-slate-200 gap-1 whitespace-nowrap">
                 <div class="flex items-center space-x-1">
-                    <button onclick="skipTime(-1.0)" class="bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded">◀ 1秒</button>
-                    <button onclick="skipTime(-0.1)" class="bg-cyan-900 hover:bg-cyan-800 text-cyan-200 border border-cyan-700 px-2 py-1 rounded font-bold">◀ 0.1秒</button>
-                    <button onclick="togglePlay()" id="playBtn" class="bg-cyan-600 hover:bg-cyan-500 px-3 py-1 rounded font-bold">▶ 再生</button>
-                    <button onclick="skipTime(0.1)" class="bg-cyan-900 hover:bg-cyan-800 text-cyan-200 border border-cyan-700 px-2 py-1 rounded font-bold">0.1秒 ▶</button>
-                    <button onclick="skipTime(1.0)" class="bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded">1秒 ▶</button>
-                    <select id="playbackSpeed" onchange="changeSpeed()" class="bg-slate-800 text-white rounded px-1 py-0.5 ml-2">
+                    <button onclick="skipTime(-1.0)" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 px-1.5 py-1 rounded shadow-sm font-medium">◀1s</button>
+                    <button onclick="skipTime(-0.1)" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 px-1.5 py-1 rounded font-bold shadow-sm">◀0.1s</button>
+                    <button onclick="skipTime(-0.01)" class="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 px-1.5 py-1 rounded font-bold shadow-sm">◀0.01s</button>
+                    
+                    <button onclick="togglePlay()" id="playBtn" class="bg-rose-600 hover:bg-rose-500 px-3 py-1 rounded font-bold text-white shadow-sm transition">▶再生</button>
+                    
+                    <button onclick="skipTime(0.01)" class="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 px-1.5 py-1 rounded font-bold shadow-sm">0.01s▶</button>
+                    <button onclick="skipTime(0.1)" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 px-1.5 py-1 rounded font-bold shadow-sm">0.1s▶</button>
+                    <button onclick="skipTime(1.0)" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 px-1.5 py-1 rounded shadow-sm font-medium">1s▶</button>
+                    
+                    <select id="playbackSpeed" onchange="changeSpeed()" class="bg-white text-slate-800 rounded px-1 py-0.5 border border-slate-300 font-semibold shadow-sm ml-1">
                         <option value="0.25">0.25x</option>
                         <option value="0.5">0.5x</option>
                         <option value="1.0" selected>1.0x</option>
                     </select>
                 </div>
 
-                <div class="flex items-center space-x-2">
-                    <span class="text-slate-300">スタート経過: <span id="baselineDiffDisp" class="font-mono text-cyan-300 font-bold text-sm">0.00s</span></span>
-                    <button onclick="setStartBaseline()" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1 rounded font-bold shadow animate-pulse">
-                        🏁 スタート設定
+                <div class="flex items-center space-x-2 shrink-0">
+                    <span class="text-slate-600 font-medium">経過: <span id="baselineDiffDisp" class="font-mono text-rose-600 font-bold text-sm">0.00s</span></span>
+                    <button onclick="setStartBaseline()" class="bg-amber-500 hover:bg-amber-400 text-slate-900 border border-amber-300 px-2.5 py-1 rounded font-bold shadow transition animate-pulse">
+                        🏁スタート設定
                     </button>
                 </div>
             </div>
         </div>
 
         <!-- 右側：常時表示の分析表 & 入力パネル -->
-        <div class="w-[440px] bg-slate-800/90 rounded-lg p-3 border border-slate-700 flex flex-col justify-between overflow-hidden">
+        <div class="w-[440px] bg-white rounded-lg p-3 border border-slate-200 shadow-sm flex flex-col justify-between overflow-hidden">
             <div class="flex flex-col h-full">
-                <div class="flex justify-between items-center border-b border-slate-700 pb-1 mb-2">
-                    <h2 class="text-sm font-bold text-cyan-300">📊 レース分析表</h2>
-                    <!-- スプレッドシートへ直接アクセスするボタン -->
-                    <a href="https://docs.google.com/spreadsheets/d/1I456M5-mpV_H4UZq--i6mrB0hYspoZmpki4OgT6wi94/edit" target="_blank" class="bg-emerald-700 hover:bg-emerald-600 text-white px-2 py-0.5 rounded text-[11px] font-bold shadow flex items-center gap-1">
+                <div class="flex justify-between items-center border-b border-slate-200 pb-1.5 mb-2">
+                    <h2 class="text-sm font-bold text-rose-700 flex items-center gap-1">📊 レース分析表</h2>
+                    <a href="https://docs.google.com/spreadsheets/d/1I456M5-mpV_H4UZq--i6mrB0hYspoZmpki4OgT6wi94/edit" target="_blank" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-0.5 rounded text-[11px] font-bold shadow-sm flex items-center gap-1 transition">
                         📑 スプレッドシートを開く
                     </a>
                 </div>
                 
                 <!-- 単式用 メンバー選択 -->
                 <div id="singleSwimmerSection" class="mb-2">
-                    <label class="text-xs text-slate-400 block mb-1">泳者名 (メンバーマスタ):</label>
-                    <select id="swimmerName" class="w-full bg-slate-900 border border-slate-600 text-white rounded p-1 text-xs"></select>
+                    <label class="text-xs text-slate-600 font-bold block mb-1">泳者名 (メンバーマスタ):</label>
+                    <select id="swimmerName" class="w-full bg-slate-50 border border-slate-300 text-slate-800 rounded p-1.5 text-xs font-semibold shadow-sm focus:outline-none focus:border-rose-500"></select>
                 </div>
 
                 <!-- リレー用 4名選択セクション -->
-                <div id="relaySwimmersSection" class="hidden mb-2 space-y-1 bg-slate-900/60 p-2 rounded border border-slate-700 text-xs">
-                    <div class="font-bold text-cyan-400 mb-1">リレー4泳者選択:</div>
-                    <div class="flex items-center gap-1"><span class="w-12 text-slate-400">1泳:</span><select class="relay-swimmer-input flex-1 bg-slate-800 text-white rounded p-0.5 border border-slate-600"></select></div>
-                    <div class="flex items-center gap-1"><span class="w-12 text-slate-400">2泳:</span><select class="relay-swimmer-input flex-1 bg-slate-800 text-white rounded p-0.5 border border-slate-600"></select></div>
-                    <div class="flex items-center gap-1"><span class="w-12 text-slate-400">3泳:</span><select class="relay-swimmer-input flex-1 bg-slate-800 text-white rounded p-0.5 border border-slate-600"></select></div>
-                    <div class="flex items-center gap-1"><span class="w-12 text-slate-400">4泳:</span><select class="relay-swimmer-input flex-1 bg-slate-800 text-white rounded p-0.5 border border-slate-600"></select></div>
+                <div id="relaySwimmersSection" class="hidden mb-2 space-y-1 bg-rose-50/50 p-2 rounded border border-rose-200 text-xs">
+                    <div class="font-bold text-rose-800 mb-1">リレー4泳者選択:</div>
+                    <div class="flex items-center gap-1"><span class="w-12 text-slate-600 font-semibold">1泳:</span><select class="relay-swimmer-input flex-1 bg-white text-slate-800 rounded p-1 border border-slate-300 shadow-sm"></select></div>
+                    <div class="flex items-center gap-1"><span class="w-12 text-slate-600 font-semibold">2泳:</span><select class="relay-swimmer-input flex-1 bg-white text-slate-800 rounded p-1 border border-slate-300 shadow-sm"></select></div>
+                    <div class="flex items-center gap-1"><span class="w-12 text-slate-600 font-semibold">3泳:</span><select class="relay-swimmer-input flex-1 bg-white text-slate-800 rounded p-1 border border-slate-300 shadow-sm"></select></div>
+                    <div class="flex items-center gap-1"><span class="w-12 text-slate-600 font-semibold">4泳:</span><select class="relay-swimmer-input flex-1 bg-white text-slate-800 rounded p-1 border border-slate-300 shadow-sm"></select></div>
                 </div>
 
                 <!-- 分析表テーブル（スクロール可能） -->
-                <div class="flex-1 overflow-y-auto border border-slate-700 rounded my-1">
+                <div class="flex-1 overflow-y-auto border border-slate-200 rounded my-1 bg-white shadow-inner">
                     <table class="w-full text-left border-collapse text-xs">
                         <thead>
-                            <tr class="bg-slate-800 text-cyan-300 border-b border-slate-700 sticky top-0">
+                            <tr class="bg-slate-100 text-slate-700 border-b border-slate-200 sticky top-0 font-bold">
                                 <th class="p-1.5">計測ポイント</th>
                                 <th class="p-1.5">タイム (例: 005498)</th>
                                 <th class="p-1.5">現在値</th>
-                                <th class="p-1.5">区間ラップ</th>
+                                <th class="p-1.5 text-center">区間ラップ</th>
                             </tr>
                         </thead>
                         <tbody id="lapTableBody"></tbody>
@@ -149,9 +156,9 @@
                 </div>
 
                 <!-- 同期用URL確認・変更欄 -->
-                <div class="mt-2 bg-slate-900 p-2 rounded border border-slate-700 text-xs space-y-1">
-                    <label class="text-slate-300 block font-semibold">同期用GAS WebApp URL (確認用):</label>
-                    <input type="text" id="gasUrlInput" value="https://script.google.com/macros/s/AKfycbyLgrbQQXAVqMU5-j7eTJgPnnexJL-HVNtAZwMjt58hMwk5OlHp-kKZfWbjOSjzqMk38A/exec" class="w-full bg-slate-800 border border-slate-600 text-slate-300 rounded p-1 text-[11px] font-mono">
+                <div class="mt-2 bg-slate-50 p-2 rounded border border-slate-200 text-xs space-y-1">
+                    <label class="text-slate-600 block font-semibold">同期用GAS WebApp URL (確認用):</label>
+                    <input type="text" id="gasUrlInput" value="https://script.google.com/macros/s/AKfycbyLgrbQQXAVqMU5-j7eTJgPnnexJL-HVNtAZwMjt58hMwk5OlHp-kKZfWbjOSjzqMk38A/exec" class="w-full bg-white border border-slate-300 text-slate-600 rounded p-1 text-[11px] font-mono shadow-sm">
                 </div>
             </div>
 
@@ -167,19 +174,21 @@
         let startBaseline = 0;
 
         let masterComps = [
-            { name: "第65回 都道府県対抗水泳競技大会", date: "2026-10-10" },
-            { name: "秋季短水路記録会", date: "2026-09-25" },
-            { name: "夏季選手権水泳競技大会", date: "2026-08-15" }
+            { name: "第12回日本マスターズ水泳スプリント選手権大会", date: "2025/11/15" },
+            { name: "2026年度日本マスターズ水泳短水路大会 大阪(門真)", date: "2026/05/09" },
+            { name: "FIAマスターズスイミング選手権2026秋季関西大会", date: "2026/09/26" },
+            { name: "新春マスターズスイムミート", date: "2020/01/25" }
         ];
 
         let masterSwimmers = [
             "山田 太郎", "鈴木 一郎", "佐藤 花子", "高橋 健太", "塚口 弘之"
         ];
 
-        async function syncMastersFromSheet() {
+        // マスタ同期関数
+        async function syncMastersFromSheet(showAlert = false) {
             let gasUrl = document.getElementById('gasUrlInput').value.trim();
             if (!gasUrl) {
-                alert('GASのURLが設定されていません。');
+                if (showAlert) alert('GASのURLが設定されていません。');
                 return;
             }
 
@@ -194,44 +203,78 @@
                         masterSwimmers = data.swimmers;
                     }
                     populateMastersUI();
-                    alert('スプレッドシートから最新の大会・メンバーマスタを同期しました！');
-                    return;
+                    if (showAlert) {
+                        alert('マスタ同期が完了しました！');
+                    }
+                } else {
+                    if (showAlert) alert('同期に失敗しました（サーバー応答エラー）。');
                 }
             } catch (e) {
                 console.error(e);
+                if (showAlert) alert('同期に失敗しました（通信エラー）。');
             }
-            alert('同期に失敗しました。CORSポリシーまたはURLをご確認ください。');
         }
 
         function populateMastersUI() {
             let compSelect = document.getElementById('compSelect');
+            let currentCompVal = compSelect.value;
             compSelect.innerHTML = '';
+            
             masterComps.forEach(c => {
                 let opt = document.createElement('option');
-                opt.value = `${c.name} (${c.date})`;
-                opt.text = `${c.name} (${c.date})`;
+                let compName = "";
+                let compDate = "";
+
+                if (Array.isArray(c)) {
+                    compName = c[0] || "";
+                    compDate = c[1] || "";
+                } else if (typeof c === 'object' && c !== null) {
+                    compName = c.name || c.competition || c.title || "";
+                    compDate = c.date || c.開催日 || "";
+                } else {
+                    compName = String(c);
+                }
+
+                opt.value = compName;
+                opt.text = compDate ? `${compName} (${compDate})` : compName;
                 compSelect.appendChild(opt);
             });
 
+            if (currentCompVal) {
+                compSelect.value = currentCompVal;
+            }
+
+            updateEventOptions();
+
             let swimmerSelect = document.getElementById('swimmerName');
+            let currentSwimmerVal = swimmerSelect.value;
             swimmerSelect.innerHTML = '';
             masterSwimmers.forEach(s => {
                 let opt = document.createElement('option');
-                opt.value = s;
-                opt.text = s;
+                let sName = typeof s === 'string' ? s : (s.name || s[0] || '');
+                opt.value = sName;
+                opt.text = sName;
                 swimmerSelect.appendChild(opt);
             });
+            if (currentSwimmerVal) {
+                swimmerSelect.value = currentSwimmerVal;
+            }
 
             let relaySelects = document.querySelectorAll('.relay-swimmer-input');
             relaySelects.forEach((sel, idx) => {
+                let currentRelayVal = sel.value;
                 sel.innerHTML = '';
                 masterSwimmers.forEach((s, sIdx) => {
+                    let sName = typeof s === 'string' ? s : (s.name || s[0] || '');
                     let opt = document.createElement('option');
-                    opt.value = s;
-                    opt.text = s;
+                    opt.value = sName;
+                    opt.text = sName;
                     if (sIdx === idx % masterSwimmers.length) opt.selected = true;
                     sel.appendChild(opt);
                 });
+                if (currentRelayVal) {
+                    sel.value = currentRelayVal;
+                }
             });
         }
 
@@ -248,6 +291,7 @@
         function updateEventOptions() {
             let ev = document.getElementById('eventSelect').value;
             let distSelect = document.getElementById('distanceSelect');
+            let currentDistVal = distSelect.value;
             distSelect.innerHTML = '';
             let distances = distanceMap[ev] || [50, 100, 200];
             distances.forEach(d => {
@@ -256,6 +300,9 @@
                 opt.text = (ev.includes('リレー')) ? `${d}m (${d/4}m×4)` : `${d}m`;
                 distSelect.appendChild(opt);
             });
+            if (currentDistVal && distances.includes(parseInt(currentDistVal))) {
+                distSelect.value = currentDistVal;
+            }
             buildLapTable();
         }
 
@@ -272,7 +319,7 @@
         function buildLapTable() {
             let course = document.getElementById('courseType').value;
             let ev = document.getElementById('eventSelect').value;
-            let dist = parseInt(document.getElementById('distanceSelect').value);
+            let dist = parseInt(document.getElementById('distanceSelect').value) || 50;
             let tbody = document.getElementById('lapTableBody');
             tbody.innerHTML = '';
 
@@ -285,8 +332,10 @@
                     }
                 }
             } else {
-                if (dist === 50 || dist === 25) {
-                    lapPointsConfig = ['15m', '25m', dist === 50 ? '35m' : '25m (Finish)', dist === 50 ? '45m' : '', dist === 50 ? '50m (Finish)' : ''].filter(Boolean);
+                if (dist === 25) {
+                    lapPointsConfig = ['15m', '25m'];
+                } else if (dist === 50) {
+                    lapPointsConfig = ['15m', '25m', '35m', '45m', '50m'];
                 } else if (course === '短水路') {
                     lapPointsConfig = ['15m', '25m', '50m', '75m'];
                     for (let d = 100; d <= dist; d += 25) lapPointsConfig.push(`${d}m`);
@@ -298,12 +347,12 @@
 
             lapPointsConfig.forEach((pt, index) => {
                 let tr = document.createElement('tr');
-                tr.className = 'border-b border-slate-800 hover:bg-slate-800/50';
+                tr.className = 'border-b border-slate-200 hover:bg-slate-50 transition';
                 tr.innerHTML = `
-                    <td class="p-1.5 font-medium text-slate-300">${pt}</td>
-                    <td class="p-1.5"><input type="text" id="time-input-${index}" onblur="formatAndCalculateLap(${index})" placeholder="005498" class="w-20 bg-slate-800 text-cyan-300 font-mono rounded px-1 text-xs border border-slate-600 text-center"></td>
-                    <td class="p-1.5"><button onclick="reflectCurrentTime(${index})" class="bg-cyan-900 hover:bg-cyan-800 text-cyan-200 border border-cyan-700 px-1.5 py-0.5 rounded text-[10px]">現在値</button></td>
-                    <td class="p-1.5 font-mono text-slate-400 text-center" id="lap-diff-${index}">-</td>
+                    <td class="p-1.5 font-medium text-slate-700">${pt}</td>
+                    <td class="p-1.5"><input type="text" id="time-input-${index}" onblur="formatAndCalculateLap(${index})" placeholder="005498" class="w-20 bg-white text-rose-700 font-bold font-mono rounded px-1.5 text-xs border border-slate-300 text-center shadow-sm focus:outline-none focus:border-rose-500"></td>
+                    <td class="p-1.5"><button onclick="reflectCurrentTime(${index})" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-1.5 py-0.5 rounded text-[10px] font-bold shadow-sm transition">現在値</button></td>
+                    <td class="p-1.5 font-mono text-slate-500 text-center font-semibold" id="lap-diff-${index}">-</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -363,14 +412,14 @@
                 if (index === 0) {
                     if(diffElem) {
                         diffElem.innerText = `+${curTimeSec.toFixed(2)}s`;
-                        diffElem.className = 'p-1.5 font-mono text-emerald-400 font-bold text-center';
+                        diffElem.className = 'p-1.5 font-mono text-emerald-600 font-bold text-center';
                     }
                     prevTimeSec = curTimeSec;
                 } else {
                     let lapSec = curTimeSec - prevTimeSec;
                     if(diffElem && curTimeSec >= prevTimeSec) {
                         diffElem.innerText = `+${lapSec.toFixed(2)}s`;
-                        diffElem.className = 'p-1.5 font-mono text-emerald-400 font-bold text-center';
+                        diffElem.className = 'p-1.5 font-mono text-emerald-600 font-bold text-center';
                     } else if(diffElem) {
                         diffElem.innerText = '-';
                         diffElem.className = 'p-1.5 font-mono text-slate-400 text-center';
@@ -457,8 +506,8 @@
 
         function skipTime(sec) { video.currentTime = Math.max(0, video.currentTime + sec); }
         function togglePlay() {
-            if (video.paused) { video.play(); document.getElementById('playBtn').innerText = '⏸ 一時停止'; }
-            else { video.pause(); document.getElementById('playBtn').innerText = '▶ 再生'; }
+            if (video.paused) { video.play(); document.getElementById('playBtn').innerText = '⏸一時停止'; }
+            else { video.pause(); document.getElementById('playBtn').innerText = '▶再生'; }
         }
         function changeSpeed() { video.playbackRate = parseFloat(document.getElementById('playbackSpeed').value); }
         
@@ -469,10 +518,11 @@
             alert(`スタート基準を設定しました (${startBaseline.toFixed(2)}s)`);
         }
 
-        window.onload = () => {
+        // ページ読み込み時に自動マスタ同期を実行（完了時にポップアップ表示）
+        window.onload = async () => {
             populateMastersUI();
             updateEventOptions();
-            syncMastersFromSheet();
+            await syncMastersFromSheet(true);
         };
     </script>
 </body>
