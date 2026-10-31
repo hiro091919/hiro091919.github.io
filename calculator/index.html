@@ -86,7 +86,7 @@
 
         let swimmersMaster = ["山田 太郎", "鈴木 一郎", "佐藤 花子", "高橋 健太", "塚口 弘之"];
         let allRecords = [];
-        let competitionDatesMap = {}; // 大会名ごとの正しい開催日を保持するマップ
+        let competitionDatesMap = {}; // 大会ごとの正しい開催日を保持するマップ
 
         window.onload = async () => {
             await syncAndLoadData();
@@ -116,7 +116,6 @@
                                 compDate = c.date || c.開催日 || "";
                             }
                             if (compName && compDate) {
-                                // YYYY/MM/DD を YYYY-MM-DD に正規化して保持
                                 competitionDatesMap[compName.trim()] = String(compDate).trim().replace(/\//g, '-');
                             }
                         });
@@ -330,12 +329,13 @@
             }
         }
 
+        // 修正：常にリストの最後（全体のフィニッシュ）のタイムを正しく取得する
         function extractFinishTimeSec(laps) {
             if (!laps) return 0;
             let lapsObj = typeof laps === 'string' ? JSON.parse(laps) : laps;
             const keys = Object.keys(lapsObj);
             if (keys.length === 0) return 0;
-            const finishKey = keys.find(k => k.includes('Finish') || k.includes('50m') || k.includes('100m') || k.includes('200m')) || keys[keys.length - 1];
+            const finishKey = keys[keys.length - 1];
             return parseTimeToSec(lapsObj[finishKey]);
         }
 
@@ -381,11 +381,9 @@
             return sec.toFixed(2);
         }
 
-        // --- 修正: 大会マスタ（competitionDatesMap）の最新日付を最優先で適用する日付抽出関数 ---
         function extractDateStr(rec) {
             if (!rec) return "2026-10-01";
 
-            // 1. レコードの大会名（cleaned）が最新のマスタ日付一覧に存在すれば、マスタ側の開催日を最優先で返す
             if (rec.competition) {
                 const cleanName = cleanCompName(rec.competition);
                 if (competitionDatesMap[cleanName]) {
@@ -393,13 +391,11 @@
                 }
             }
 
-            // 2. レコード自体に独立した日付プロパティがあれば使用
             if (rec.date) {
                 const m = String(rec.date).match(/\d{4}[-/]\d{2}[-/]\d{2}/);
                 if (m) return m[0].replace(/\//g, '-');
             }
 
-            // 3. 従来どおり文字列内から抽出
             if (rec.competition) {
                 const match = rec.competition.match(/(\d{4}[-/]\d{2}[-/]\d{2})/);
                 if (match) return match[1].replace(/\//g, '-');
